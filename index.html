@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>TechMatch Pro - Spare Compatibility Hub</title>
+  <!-- Tailwind CSS CDN for styling -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <style>
+    body { -webkit-tap-highlight-color: transparent; }
+    .hide-scrollbar::-webkit-scrollbar { display: none; }
+    .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col font-sans">
+
+  <!-- Top Header -->
+  <header class="sticky top-0 z-30 bg-slate-900/95 backdrop-blur border-b border-slate-800 px-4 py-3 flex items-center justify-between shadow-md">
+    <div class="flex items-center gap-2">
+      <div class="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-lg border border-emerald-500/30">
+        <i class="fa-solid fa-microchip"></i>
+      </div>
+      <div>
+        <h1 class="text-base font-bold leading-tight tracking-wide text-white">TechMatch <span class="text-emerald-400">Pro</span></h1>
+        <p class="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">100% Free · Offline Database</p>
+      </div>
+    </div>
+    <div class="flex items-center gap-2">
+      <button onclick="openModal('addModal')" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs px-2.5 py-1.5 rounded-lg flex items-center gap-1.5 font-medium transition active:scale-95">
+        <i class="fa-solid fa-plus"></i> <span>Add Part</span>
+      </button>
+      <button onclick="exportData()" title="Backup JSON" class="p-1.5 rounded-lg bg-slate-800 text-slate-300 hover:text-white border border-slate-700 active:scale-95 text-xs">
+        <i class="fa-solid fa-download"></i>
+      </button>
+    </div>
+  </header>
+
+  <!-- Sticky Search Bar -->
+  <div class="p-3 bg-slate-900/60 border-b border-slate-800/80">
+    <div class="relative">
+      <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+      <input
+        id="searchInput"
+        type="text"
+        placeholder="Search model, chipset, or alternate fit (e.g. Y20, C35, 6000mAh)..."
+        class="w-full pl-9 pr-8 py-2 bg-slate-800/90 text-sm text-white placeholder-slate-400 rounded-xl border border-slate-700 focus:outline-none focus:border-emerald-500 transition shadow-inner"
+        oninput="handleSearch()"
+      />
+      <button id="clearSearch" onclick="clearSearchInput()" class="hidden absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white text-xs">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+
+    <!-- Category Filter Tabs -->
+    <div class="flex gap-2 mt-3 overflow-x-auto hide-scrollbar text-xs font-medium">
+      <button onclick="setCategory('all')" id="tab-all" class="category-tab px-3 py-1.5 rounded-lg bg-emerald-600 text-white border border-emerald-500 whitespace-nowrap transition">
+        All Items
+      </button>
+      <button onclick="setCategory('combo')" id="tab-combo" class="category-tab px-3 py-1.5 rounded-lg bg-slate-800 text-slate-300 border border-slate-700 whitespace-nowrap transition">
+        <i class="fa-solid fa-mobile-screen mr-1 text-slate-400"></i> Combos / Folders
+      </button>
+      <button onclick="setCategory('tempered')" id="tab-tempered" class="category-tab px-3 py-1.5 rounded-lg bg-slate-800 text-slate-300 border border-slate-700 whitespace-nowrap transition">
+        <i class="fa-solid fa-shield mr-1 text-slate-400"></i> Tempered Glass
+      </button>
+      <button onclick="setCategory('cc_board')" id="tab-cc_board" class="category-tab px-3 py-1.5 rounded-lg bg-slate-800 text-slate-300 border border-slate-700 whitespace-nowrap transition">
+        <i class="fa-solid fa-bolt mr-1 text-slate-400"></i> CC Sub-Boards
+      </button>
+      <button onclick="setCategory('battery')" id="tab-battery" class="category-tab px-3 py-1.5 rounded-lg bg-slate-800 text-slate-300 border border-slate-700 whitespace-nowrap transition">
+        <i class="fa-solid fa-car-battery mr-1 text-slate-400"></i> Batteries
+      </button>
+    </div>
+  </div>
+
+  <!-- Main Feed -->
+  <main class="flex-1 p-3 max-w-3xl mx-auto w-full">
+    <div id="resultsCount" class="text-[11px] text-slate-400 font-medium px-1 mb-2">Showing all records</div>
+    <div id="cardsContainer" class="space-y-3">
+      <!-- Injected Dynamically -->
+    </div>
+  </main>
+
+  <!-- Add Item Modal -->
+  <div id="addModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-3">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md p-4 max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+        <h2 class="text-sm font-bold text-white flex items-center gap-2">
+          <i class="fa-solid fa-circle-plus text-emerald-400"></i> Add Compatibility Record
+        </h2>
+        <button onclick="closeModal('addModal')" class="text-slate-400 hover:text-white p-1 text-sm">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <form id="addForm" onsubmit="saveNewRecord(event)" class="space-y-3 mt-3 text-xs">
+        <div>
+          <label class="block text-slate-400 mb-1">Component Category</label>
+          <select id="modalCategory" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-white">
+            <option value="combo">Display Combo / Folder</option>
+            <option value="tempered">Tempered Glass</option>
+            <option value="cc_board">Charging Sub-Board (CC)</option>
+            <option value="battery">Battery / Flex</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-slate-400 mb-1">Target Model / Base Name</label>
+          <input type="text" id="modalTarget" required placeholder="e.g. Vivo Y20 / Y20i" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-white placeholder-slate-500" />
+        </div>
+        <div>
+          <label class="block text-slate-400 mb-1">Fully Compatible Models (Comma-separated)</label>
+          <textarea id="modalCompatible" rows="2" required placeholder="e.g. Vivo Y12s, Y20A, Y20G, Oppo A15 (if tested)" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-white placeholder-slate-500"></textarea>
+        </div>
+        <div>
+          <label class="block text-slate-400 mb-1">Specifications (Cutout, Voltage, Pin count, Dimensions)</label>
+          <input type="text" id="modalSpecs" placeholder="e.g. Punch Hole Waterdrop, 6.51 inches, 18W Mic-Support" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-white placeholder-slate-500" />
+        </div>
+        <div>
+          <label class="block text-slate-400 mb-1">Bench Notes / Cautions</label>
+          <input type="text" id="modalNotes" placeholder="e.g. Check touch calibration after paste, flash with standard IC" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-white placeholder-slate-500" />
+        </div>
+        <div class="pt-2 flex gap-2">
+          <button type="button" onclick="closeModal('addModal')" class="flex-1 py-2 rounded-lg bg-slate-800 border border-slate-700 text-slate-300 font-medium">Cancel</button>
+          <button type="submit" class="flex-1 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold shadow-md">Save Record</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    // Initial benchmark compatibility dataset (ProGlide / Universal matching architecture)
+    const defaultData = [
+      {
+        id: "rec_1",
+        category: "combo",
+        target: "Vivo Y20 / Y20i / Y20G",
+        compatible: ["Vivo Y12s", "Vivo Y20A", "Vivo Y30 (Standard Frame)", "Vivo Y15a", "Vivo Y15s (Check Flex Length)"],
+        specs: "6.51\" IPS LCD · Waterdrop V-Cut · 720x1600",
+        notes: "Same frame profile across Y20 variations. Frame clips align without bezel gap.",
+        verified: true
+      },
+      {
+        id: "rec_2",
+        category: "combo",
+        target: "Realme C35",
+        compatible: ["Realme Narzo 50A Prime", "Realme C31 (Universal Display pinout match)"],
+        specs: "6.6\" FHD+ · U-Notch · 60Hz",
+        notes: "Narzo 50A Prime combo is 100% interchangeable without touch jitter.",
+        verified: true
+      },
+      {
+        id: "rec_3",
+        category: "tempered",
+        target: "Oppo A16 / A16k",
+        compatible: ["Realme C11 (2021)", "Realme C21Y", "Vivo Y12s (Full cover border)", "Narzo 50i"],
+        specs: "Universal 6.52\" Flat Matrix · Teardrop Notch",
+        notes: "Full-glue 9D tempered provides edge-to-edge coverage without proximity sensor block.",
+        verified: true
+      },
+      {
+        id: "rec_4",
+        category: "cc_board",
+        target: "Redmi Note 9 Pro",
+        compatible: ["Redmi Note 9 Pro Max", "Poco M2 Pro"],
+        specs: "Type-C · 33W Fast-Charge Pinout · Integrated Mic",
+        notes: "Ensure mic acoustic mesh is present. Fast charging Turbo negotiates cleanly.",
+        verified: true
+      },
+      {
+        id: "rec_5",
+        category: "battery",
+        target: "BLP729 (5000 mAh)",
+        compatible: ["Realme 5", "Realme 5s", "Realme 5i", "Realme C3", "Realme 6i"],
+        specs: "3.85V Nominal · 4.4V Max · 5000mAh",
+        notes: "Ribbon orientation matches 1:1. No flex bend required on base motherboard.",
+        verified: true
+      },
+      {
+        id: "rec_6",
+        category: "cc_board",
+        target: "Vivo Y12 / Y15 / Y17",
+        compatible: ["Vivo Y11 (2019)", "Vivo Y3", "Vivo U10"],
+        specs: "Micro-USB 2.0 · Bottom Mic Array",
+        notes: "Full microphone and ringer antenna connectivity are fully identical.",
+        verified: true
+      }
+    ];
+
+    // State management
+    let activeCategory = "all";
+    let database = [];
+
+    function init() {
+      const stored = localStorage.getItem("repair_compat_db");
+      if (stored) {
+        try { database = JSON.parse(stored); } catch (e) { database = defaultData; }
+      } else {
+        database = defaultData;
+        localStorage.setItem("repair_compat_db", JSON.stringify(database));
+      }
+      render();
+    }
+
+    function setCategory(cat) {
+      activeCategory = cat;
+      document.querySelectorAll(".category-tab").forEach(tab => {
+        tab.classList.remove("bg-emerald-600", "text-white", "border-emerald-500");
+        tab.classList.add("bg-slate-800", "text-slate-300", "border-slate-700");
+      });
+      const currentTab = document.getElementById(`tab-${cat}`);
+      if (currentTab) {
+        currentTab.classList.remove("bg-slate-800", "text-slate-300", "border-slate-700");
+        currentTab.classList.add("bg-emerald-600", "text-white", "border-emerald-500");
+      }
+      render();
+    }
+
+    function handleSearch() {
+      const val = document.getElementById("searchInput").value;
+      const clearBtn = document.getElementById("clearSearch");
+      if (val.length > 0) {
+        clearBtn.classList.remove("hidden");
+      } else {
+        clearBtn.classList.add("hidden");
+      }
+      render();
+    }
+
+    function clearSearchInput() {
+      document.getElementById("searchInput").value = "";
+      document.getElementById("clearSearch").classList.add("hidden");
+      render();
+    }
+
+    function getCategoryBadge(cat) {
+      switch (cat) {
+        case "combo":
+          return `<span class="bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 text-[10px] px-2 py-0.5 rounded-full font-semibold"><i class="fa-solid fa-mobile-screen mr-1"></i>Combo / Folder</span>`;
+        case "tempered":
+          return `<span class="bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 text-[10px] px-2 py-0.5 rounded-full font-semibold"><i class="fa-solid fa-shield mr-1"></i>Tempered Glass</span>`;
+        case "cc_board":
+          return `<span class="bg-amber-500/10 text-amber-400 border border-amber-500/20 text-[10px] px-2 py-0.5 rounded-full font-semibold"><i class="fa-solid fa-bolt mr-1"></i>CC Sub-Board</span>`;
+        case "battery":
+          return `<span class="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] px-2 py-0.5 rounded-full font-semibold"><i class="fa-solid fa-car-battery mr-1"></i>Battery</span>`;
+        default:
+          return `<span class="bg-slate-500/10 text-slate-400 border border-slate-500/20 text-[10px] px-2 py-0.5 rounded-full font-semibold">Hardware</span>`;
+      }
+    }
+
+    function render() {
+      const query = document.getElementById("searchInput").value.toLowerCase().trim();
+      const container = document.getElementById("cardsContainer");
+      const countEl = document.getElementById("resultsCount");
+
+      const filtered = database.filter(item => {
+        const matchesCategory = activeCategory === "all" || item.category === activeCategory;
+        const matchesQuery = !query ||
+          item.target.toLowerCase().includes(query) ||
+          item.compatible.some(c => c.toLowerCase().includes(query)) ||
+          item.specs.toLowerCase().includes(query) ||
+          item.notes.toLowerCase().includes(query);
+
+        return matchesCategory && matchesQuery;
+      });
+
+      countEl.innerText = `Showing ${filtered.length} of ${database.length} parts`;
+
+      if (filtered.length === 0) {
+        container.innerHTML = `
+          <div class="bg-slate-900 border border-slate-800 rounded-xl p-8 text-center text-slate-400">
+            <i class="fa-solid fa-magnifying-glass text-3xl mb-3 text-slate-600"></i>
+            <p class="font-medium text-sm text-slate-300">No cross-matching models found</p>
+            <p class="text-xs text-slate-500 mt-1">Try another keyword or add this model to your custom database.</p>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = filtered.map(item => `
+        <div class="bg-slate-900 border border-slate-800/90 hover:border-slate-700/80 rounded-xl p-3.5 shadow-sm transition">
+          <div class="flex items-center justify-between gap-2 mb-2">
+            <h3 class="font-bold text-sm text-white tracking-wide flex items-center gap-1.5">
+              <span>${item.target}</span>
+              ${item.verified ? '<i class="fa-solid fa-circle-check text-emerald-400 text-xs" title="Verified Fit"></i>' : ''}
+            </h3>
+            ${getCategoryBadge(item.category)}
+          </div>
+
+          <!-- Matching List -->
+          <div class="bg-slate-950/60 rounded-lg p-2.5 border border-slate-800/70 mb-2.5">
+            <div class="text-[10px] uppercase font-bold text-emerald-400 mb-1 tracking-wider flex items-center gap-1">
+              <i class="fa-solid fa-arrows-rotate text-[9px]"></i> Compatible Across:
+            </div>
+            <div class="flex flex-wrap gap-1.5 mt-1">
+              ${item.compatible.map(model => `
+                <span class="bg-slate-800 text-slate-200 text-xs px-2 py-0.5 rounded border border-slate-700">
+                  ${model}
+                </span>
+              `).join('')}
+            </div>
+          </div>
+
+          <!-- Specs and Bench Notes -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-1.5 text-[11px] text-slate-400">
+            <div><strong class="text-slate-300">Specs:</strong> ${item.specs || 'N/A'}</div>
+            <div><strong class="text-slate-300">Bench Note:</strong> ${item.notes || 'Universal fit verified.'}</div>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    // Modal & CRUD Operations
+    function openModal(id) { document.getElementById(id).classList.remove("hidden"); }
+    function closeModal(id) { document.getElementById(id).classList.add("hidden"); }
+
+    function saveNewRecord(e) {
+      e.preventDefault();
+      const category = document.getElementById("modalCategory").value;
+      const target = document.getElementById("modalTarget").value.trim();
+      const compatibleRaw = document.getElementById("modalCompatible").value.trim();
+      const specs = document.getElementById("modalSpecs").value.trim();
+      const notes = document.getElementById("modalNotes").value.trim();
+
+      const compatible = compatibleRaw.split(",").map(m => m.trim()).filter(Boolean);
+
+      const newRecord = {
+        id: "rec_" + Date.now(),
+        category,
+        target,
+        compatible,
+        specs,
+        notes,
+        verified: true
+      };
+
+      database.unshift(newRecord);
+      localStorage.setItem("repair_compat_db", JSON.stringify(database));
+      document.getElementById("addForm").reset();
+      closeModal("addModal");
+      render();
+    }
+
+    function exportData() {
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(database, null, 2));
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.setAttribute("href", dataStr);
+      downloadAnchor.setAttribute("download", "techmatch_compatibility_backup.json");
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+    }
+
+    window.addEventListener("DOMContentLoaded", init);
+  </script>
+</body>
+  </html>
+  
